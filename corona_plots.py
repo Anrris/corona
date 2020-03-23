@@ -65,14 +65,15 @@ class CoronaPlots(object):
         count_names.sort(key = lambda x: x[0], reverse=True)
         
         fig = make_subplots(rows=2, cols=1, vertical_spacing=0.05)
-        for _, country in count_names:
+        #for _, country in count_names:
+        for idx, (_, country) in enumerate(count_names):
             date = list(dfSub.index)
             count = list(dfSub[country])
             last_count = count[-1]
             while(pd.isna(last_count)):
                 count = count[:-1]
                 last_count = count[-1]
-            color = cls.hex_colors[int(last_count) % len(cls.hex_colors)]
+            color = cls.hex_colors[idx % len(cls.hex_colors)]
         
             fig.add_trace(
                 go.Scatter(
@@ -120,7 +121,7 @@ class CoronaPlots(object):
         count_names.sort(key = lambda x: x[0], reverse=True)
         
         fig = make_subplots(rows=2, cols=1, vertical_spacing=0.1)
-        for _, name in count_names:
+        for idx, (_, name) in enumerate(count_names):
 
             date = list(dfUS.index)
             count = list(dfUS[name])
@@ -131,7 +132,7 @@ class CoronaPlots(object):
             if last_count == 0:
                 continue
 
-            color = cls.hex_colors[int(last_count) % len(cls.hex_colors)]
+            color = cls.hex_colors[int(idx) % len(cls.hex_colors)]
             date = date[30:]
             count = count[30:]
             fig.add_trace(
@@ -177,7 +178,7 @@ class CoronaPlots(object):
             dfstate = dfstate.sort_values(by='date')
             
             dates, positives, negatives = [],[],[]
-            for idx, row in dfstate.iterrows():
+            for _, row in dfstate.iterrows():
                 date, positive, negative = str(row.date), row.positive, row.negative
                 if str(positive) == 'nan':
                     positive = 0
