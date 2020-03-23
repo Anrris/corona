@@ -128,6 +128,9 @@ class CoronaPlots(object):
             while(pd.isna(last_count)):
                 count = count[:-1]
                 last_count = count[-1]
+            if last_count == 0:
+                continue
+
             color = cls.hex_colors[int(last_count) % len(cls.hex_colors)]
             date = date[30:]
             count = count[30:]
