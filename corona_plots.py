@@ -13,23 +13,28 @@ class CoronaPlots(object):
         'CSSEGISandData/COVID-19/master/csse_covid_19_data/'
         'csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
     )
-    df0 = pd.read_csv(filename)
+    df_confirmed = pd.read_csv(filename)
     os.remove(filename)
 
     filename = wget.download(
-        'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
-        #'https://raw.githubusercontent.com/'
-        #'CSSEGISandData/COVID-19/master/csse_covid_19_data/'
-        #'csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
+        'https://raw.githubusercontent.com/'
+        'CSSEGISandData/COVID-19/master/csse_covid_19_data/'
+        'csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
     )
-    df1 = pd.read_csv(filename)
+    df_global = pd.read_csv(filename)
+    os.remove(filename)
+
+    filename = wget.download(
+        'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+    )
+    df_global_death = pd.read_csv(filename)
     os.remove(filename)
     
     filename = wget.download(
         'https://raw.githubusercontent.com/'
         'COVID19Tracking/covid-tracking-data/master/data/states_daily_4pm_et.csv'
     )
-    df2 = pd.read_csv(filename)
+    df_usa_states = pd.read_csv(filename)
     os.remove(filename)
     
     hex_colors = [
@@ -37,61 +42,67 @@ class CoronaPlots(object):
         '#7f7f7f','#bcbd22','#17becf','#7f0000','#000000','#04ab08','#0000fb',
     ]
 
-
-
     @classmethod
     def plot_global_cases(cls, auto_open = False):
-        dfAll = cls.df1
-        dfSub = dfAll[dfAll['Province/State'].isna()]
-        dfSub = dfSub.drop(columns=['Province/State', 'Lat', 'Long'])
-        dfSub = dfSub.T
-        dfSub.columns = dfSub.iloc[0]
-        dfSub = dfSub.drop(['Country/Region'])
+        def cleanup_global_dataframe(df):
+            dfAll = df
+            dfSub = dfAll[dfAll['Province/State'].isna()]
+            dfSub = dfSub.drop(columns=['Province/State', 'Lat', 'Long'])
+            dfSub = dfSub.T
+            dfSub.columns = dfSub.iloc[0]
+            dfSub = dfSub.drop(['Country/Region'])
         
-        country_with_state = dfAll[~dfAll['Province/State'].isna()]['Country/Region'].unique()
+            country_with_state = dfAll[~dfAll['Province/State'].isna()]['Country/Region'].unique()
         
-        sets =  set(dfSub.columns)
-        for country in country_with_state:
-            df = dfAll[dfAll['Country/Region']==country]
-            df = df.drop(columns=['Province/State', 'Country/Region', 'Lat', 'Long'])
-            row_total = None
-            for _, row in df.iterrows():
-                for i, r in enumerate(row):
-                    if pd.isna(r):
-                        row[i] = 0
+            sets =  set(dfSub.columns)
+            for country in country_with_state:
+                df = dfAll[dfAll['Country/Region']==country]
+                df = df.drop(columns=['Province/State', 'Country/Region', 'Lat', 'Long'])
+                row_total = None
+                for _, row in df.iterrows():
+                    for i, r in enumerate(row):
+                        if pd.isna(r):
+                            row[i] = 0
 
-                if row_total is None:
-                    row_total = row
+                    if row_total is None:
+                        row_total = row
+                        continue
+                    row_total = row_total + row
+                if country in sets:
+                    dfSub[country] = list(row_total)
+                else:
+                    dfSub.insert(0, country, list(row_total), True)
+
+            dfSub = dfSub.rename(columns={"Country/Region": "date"})
+            last_date = dfSub.index[-1]
+            count_names = []
+            for count, name in zip(list(dfSub.loc[last_date]), list(dfSub.columns)):
+                if type(count) is str:
                     continue
-                row_total = row_total + row
-            if country in sets:
-                dfSub[country] = list(row_total)
-            else:
-                dfSub.insert(0, country, list(row_total), True)
+                count_names.append((count, name))
 
-        dfSub = dfSub.rename(columns={"Country/Region": "date"})
-        last_date = dfSub.index[-1]
-        count_names = []
-        for count, name in zip(list(dfSub.loc[last_date]), list(dfSub.columns)):
-            if type(count) is str:
-                continue
-            count_names.append((count, name))
-            
-        count_names.sort(key = lambda x: x[0], reverse=True)
+            count_names.sort(key = lambda x: x[0], reverse=True)
+            return dfSub, count_names
+
+        dfSub, count_names = cleanup_global_dataframe(cls.df_global)
+        dfSubDeath, count_namesDeath = cleanup_global_dataframe(cls.df_global_death)
+
+        def myhash(input):
+            idx = int(hashlib.sha1(input.encode("utf-8")).hexdigest(), 16) % 157
+            return idx
         
-        fig = make_subplots(rows=2, cols=1, vertical_spacing=0.05)
+        fig = make_subplots(rows=5, cols=1, vertical_spacing=0.05)
+        import hashlib
         for idx, (_, country) in enumerate(count_names):
+            #idx = myhash(country)
             date = list(dfSub.index)
             count = list(dfSub[country])
             last_count = count[-1]
-            while(pd.isna(last_count)):
-                count = count[:-1]
-                last_count = count[-1]
             color = cls.hex_colors[idx % len(cls.hex_colors)]
         
             fig.add_trace(
                 go.Scatter(
-                    x=date, y=count, mode='lines+markers', name=f'{country} accumulated: last day = {last_count}',
+                    x=date, y=count, mode='lines+markers', name=f'{country} accumulated positives: last day = {last_count}',
                     legendgroup=country, line=dict(color=color), marker=dict(color=color),
                     hoverinfo='text',
                     hovertext=[f'{country}, {t}={c}' for t, c in zip(dfSub.index, dfSub[country])]
@@ -103,29 +114,74 @@ class CoronaPlots(object):
             count_diff = np.array(count) - np.array([0]+count[:-1])
             fig.add_trace(
                 go.Scatter(
-                    x=date, y=count_diff , mode='lines+markers', name=f'{country} daily',
+                    x=date, y=count_diff , mode='lines+markers', name=f'{country} daily positives',
                     legendgroup=country, line=dict(color=color), marker=dict(color=color), hoverinfo='text',
                     hovertext=[f'{country}, {t}, daily new case={c}' for t, c in zip(date, count_diff)]
                 ),
                 row=2, col=1
             )
+
+            date = list(dfSubDeath.index)
+            count_death = list(dfSubDeath[country])
+            last_count = count_death[-1]
+            color = cls.hex_colors[idx % len(cls.hex_colors)]
+        
+            fig.add_trace(
+                go.Scatter(
+                    x=date, y=count_death, mode='lines+markers', name=f'{country} accumulated death: last day = {last_count}',
+                    legendgroup=country, line=dict(color=color), marker=dict(color=color),
+                    hoverinfo='text',
+                    hovertext=[f'{country}, {t}={c}' for t, c in zip(dfSubDeath.index, dfSubDeath[country])]
+                ),
+                row=3, col=1
+            )
+            
+            count_diff = np.array(count_death) - np.array([0]+count_death[:-1])
+            fig.add_trace(
+                go.Scatter(
+                    x=date, y=count_diff , mode='lines+markers', name=f'{country} daily death',
+                    legendgroup=country, line=dict(color=color), marker=dict(color=color), hoverinfo='text',
+                    hovertext=[f'{country}, {t}, daily new case={c}' for t, c in zip(date, count_diff)]
+                ),
+                row=4, col=1
+            )
+
+            ratio = []
+            for pos, death in zip(count, count_death):
+                if pos > 0 :
+                    ratio.append(death/pos)
+                else:
+                    ratio.append(0)
+
+            fig.add_trace(
+                go.Scatter(
+                    x=date, y=ratio , mode='lines+markers', name=f'{country} total death ratio',
+                    legendgroup=country, line=dict(color=color), marker=dict(color=color), hoverinfo='text',
+                    hovertext=[f'{country}, {t}, daily new case={c}' for t, c in zip(date, ratio)]
+                ),
+                row=5, col=1
+            )
+ 
             
         fig.update_layout( title="Corona virus growth: Global")
-        fig.update_yaxes(title_text="Accumulative count", row=1, col=1)
-        fig.update_yaxes(title_text="Daily count", row=2, col=1)
+        fig.update_yaxes(title_text="Accumulative positive count", row=1, col=1)
+        fig.update_yaxes(title_text="Daily positive count", row=2, col=1)
+        fig.update_yaxes(title_text="Accumulative death count", row=3, col=1)
+        fig.update_yaxes(title_text="Daily death count", row=4, col=1)
+        fig.update_yaxes(title_text="Total death ratio", row=4, col=1)
         
         plotly.offline.plot(fig, filename = 'corona_global.html', auto_open=auto_open)
         return fig
 
     @classmethod
-    def impute_df0_from_df2(cls):
+    def impute_df0_from_df_usa_states(cls):
         df = pd.DataFrame()
-        df['date'] = cls.df0.columns[4:]
+        df['date'] = cls.df_confirmed.columns[4:]
         df = df.set_index('date')
-        states = cls.df2.state.unique()
+        states = cls.df_usa_states.state.unique()
         for state in states:
             df[state] = [0]*len(df.index)
-        for idx, row in cls.df2.iterrows():
+        for idx, row in cls.df_usa_states.iterrows():
             date = str(row.date)
             date = str(int(date[4:6]))+'/'+str(int(date[6:8]))+'/'+str(int(date[2:4]))
             df.loc[date][row.state] = row.positive
@@ -133,7 +189,7 @@ class CoronaPlots(object):
     
     @classmethod
     def plot_usa_cases(cls, auto_open=False):
-        dfUS = cls.impute_df0_from_df2()
+        dfUS = cls.impute_df0_from_df_usa_states()
         last_date = dfUS.index[-1]
         
         count_names = []
@@ -189,7 +245,7 @@ class CoronaPlots(object):
     
     @classmethod
     def plot_usa_pos_neg_tracking(cls, auto_open=False):
-        df = cls.df2
+        df = cls.df_usa_states
         states = df.state.unique()
         
         total_cols = 5
