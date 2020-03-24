@@ -13,6 +13,15 @@ class CoronaPlots(object):
         'CSSEGISandData/COVID-19/master/csse_covid_19_data/'
         'csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
     )
+    df0 = pd.read_csv(filename)
+    os.remove(filename)
+
+    filename = wget.download(
+        'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+        #'https://raw.githubusercontent.com/'
+        #'CSSEGISandData/COVID-19/master/csse_covid_19_data/'
+        #'csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
+    )
     df1 = pd.read_csv(filename)
     os.remove(filename)
     
@@ -27,7 +36,9 @@ class CoronaPlots(object):
         '#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2',
         '#7f7f7f','#bcbd22','#17becf','#7f0000','#000000','#04ab08','#0000fb',
     ]
-    
+
+
+
     @classmethod
     def plot_global_cases(cls, auto_open = False):
         dfAll = cls.df1
@@ -39,6 +50,7 @@ class CoronaPlots(object):
         
         country_with_state = dfAll[~dfAll['Province/State'].isna()]['Country/Region'].unique()
         
+        sets =  set(dfSub.columns)
         for country in country_with_state:
             df = dfAll[dfAll['Country/Region']==country]
             df = df.drop(columns=['Province/State', 'Country/Region', 'Lat', 'Long'])
@@ -52,8 +64,11 @@ class CoronaPlots(object):
                     row_total = row
                     continue
                 row_total = row_total + row
-            dfSub.insert(0, country, list(row_total), True)
-        
+            if country in sets:
+                dfSub[country] = list(row_total)
+            else:
+                dfSub.insert(0, country, list(row_total), True)
+
         dfSub = dfSub.rename(columns={"Country/Region": "date"})
         last_date = dfSub.index[-1]
         count_names = []
@@ -65,7 +80,6 @@ class CoronaPlots(object):
         count_names.sort(key = lambda x: x[0], reverse=True)
         
         fig = make_subplots(rows=2, cols=1, vertical_spacing=0.05)
-        #for _, country in count_names:
         for idx, (_, country) in enumerate(count_names):
             date = list(dfSub.index)
             count = list(dfSub[country])
@@ -102,15 +116,24 @@ class CoronaPlots(object):
         
         plotly.offline.plot(fig, filename = 'corona_global.html', auto_open=auto_open)
         return fig
+
+    @classmethod
+    def impute_df0_from_df2(cls):
+        df = pd.DataFrame()
+        df['date'] = cls.df0.columns[4:]
+        df = df.set_index('date')
+        states = cls.df2.state.unique()
+        for state in states:
+            df[state] = [0]*len(df.index)
+        for idx, row in cls.df2.iterrows():
+            date = str(row.date)
+            date = str(int(date[4:6]))+'/'+str(int(date[6:8]))+'/'+str(int(date[2:4]))
+            df.loc[date][row.state] = row.positive
+        return df
     
     @classmethod
     def plot_usa_cases(cls, auto_open=False):
-        df = cls.df1
-        dfUS = df[df['Country/Region']=='US']
-        
-        dfUS = dfUS.T
-        dfUS.columns = dfUS.iloc[0]
-        dfUS = dfUS.drop(['Country/Region', 'Lat', 'Long', 'Province/State'])
+        dfUS = cls.impute_df0_from_df2()
         last_date = dfUS.index[-1]
         
         count_names = []
