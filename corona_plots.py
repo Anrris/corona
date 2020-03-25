@@ -85,16 +85,10 @@ class CoronaPlots(object):
             return dfSub, count_names
 
         dfSub, count_names = cleanup_global_dataframe(cls.df_global)
-        dfSubDeath, count_namesDeath = cleanup_global_dataframe(cls.df_global_death)
+        dfSubDeath, _ = cleanup_global_dataframe(cls.df_global_death)
 
-        def myhash(input):
-            idx = int(hashlib.sha1(input.encode("utf-8")).hexdigest(), 16) % 157
-            return idx
-        
         fig = make_subplots(rows=5, cols=1, vertical_spacing=0.05)
-        import hashlib
         for idx, (_, country) in enumerate(count_names):
-            #idx = myhash(country)
             date = list(dfSub.index)
             count = list(dfSub[country])
             last_count = count[-1]
@@ -168,7 +162,7 @@ class CoronaPlots(object):
         fig.update_yaxes(title_text="Daily positive count", row=2, col=1)
         fig.update_yaxes(title_text="Accumulative death count", row=3, col=1)
         fig.update_yaxes(title_text="Daily death count", row=4, col=1)
-        fig.update_yaxes(title_text="Total death ratio", row=4, col=1)
+        fig.update_yaxes(title_text="Total death ratio", row=5, col=1)
         
         plotly.offline.plot(fig, filename = 'corona_global.html', auto_open=auto_open)
         return fig
@@ -176,8 +170,9 @@ class CoronaPlots(object):
     @classmethod
     def impute_df0_from_df_usa_states(cls):
         df = pd.DataFrame()
-        df['date'] = cls.df_confirmed.columns[4:]
+        df['date'] = cls.df_global.columns[4:]
         df = df.set_index('date')
+        display(df)
         states = cls.df_usa_states.state.unique()
         for state in states:
             df[state] = [0]*len(df.index)
