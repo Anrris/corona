@@ -172,7 +172,6 @@ class CoronaPlots(object):
         df = pd.DataFrame()
         df['date'] = cls.df_global.columns[4:]
         df = df.set_index('date')
-        display(df)
         states = cls.df_usa_states.state.unique()
         for state in states:
             df[state] = [0]*len(df.index)
