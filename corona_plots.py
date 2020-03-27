@@ -8,13 +8,11 @@ import plotly
 
 
 class CoronaPlots(object):
-    filename = wget.download(
-        'https://raw.githubusercontent.com/'
-        'CSSEGISandData/COVID-19/master/csse_covid_19_data/'
-        'csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
-    )
-    df_confirmed = pd.read_csv(filename)
-    os.remove(filename)
+    #filename = wget.download(
+    #    'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
+    #)
+    #df_confirmed = pd.read_csv(filename)
+    #os.remove(filename)
 
     filename = wget.download(
         'https://raw.githubusercontent.com/'
