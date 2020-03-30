@@ -8,6 +8,11 @@ Title: Hubei lockdown<br>
 source: https://en.wikipedia.org/wiki/2020_Hubei_lockdowns <br>
 """)
 
+news[pd.Timestamp(2020, 2, 13)] = dict(body="""
+肺炎疫情：應勇空降「救火」 中共湖北換帥<br>
+source: https://www.bbc.com/zhongwen/trad/chinese-news-51485021
+""")
+
 
 news[pd.Timestamp(2020, 2, 21)] = dict(body="""
 Italy sees confirmed virus cases more than quadruple<br>
