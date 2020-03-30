@@ -77,6 +77,73 @@ class CoronaPlots(object):
             return dfSub, count_names
 
         dfSub, count_names = cleanup_global_dataframe(cls.df_global)
+
+        fig = go.Figure()
+        for idx, (_, country) in enumerate(count_names):
+            date = list(dfSub.index)
+            count = list(dfSub[country])
+            last_count = count[-1]
+            color = cls.hex_colors[idx % len(cls.hex_colors)]
+        
+            fig.add_trace(
+                go.Scatter(
+                    x=date, y=count, mode='lines+markers', name=f'{country} accumulated positives: last day = {last_count}',
+                    legendgroup=country, line=dict(color=color), marker=dict(color=color),
+                    hoverinfo='text',
+                    hovertext=[f'{country}, {t}={c}' for t, c in zip(dfSub.index, dfSub[country])]
+                ),
+            )
+        #layout = dict(
+        #    title='Corona virus growth: Global',
+        #    xaxis=dict( rangeslider=dict( visible = True))
+        #)
+        fig.update_yaxes(title_text="Confirmed")
+        plotly.offline.plot(fig, filename = 'corona_global.html', auto_open=auto_open)
+        return fig
+
+    @classmethod
+    def plot_global_cases_mixed(cls, auto_open = False):
+        def cleanup_global_dataframe(df):
+            dfAll = df
+            dfSub = dfAll[dfAll['Province/State'].isna()]
+            dfSub = dfSub.drop(columns=['Province/State', 'Lat', 'Long'])
+            dfSub = dfSub.T
+            dfSub.columns = dfSub.iloc[0]
+            dfSub = dfSub.drop(['Country/Region'])
+        
+            country_with_state = dfAll[~dfAll['Province/State'].isna()]['Country/Region'].unique()
+        
+            sets =  set(dfSub.columns)
+            for country in country_with_state:
+                df = dfAll[dfAll['Country/Region']==country]
+                df = df.drop(columns=['Province/State', 'Country/Region', 'Lat', 'Long'])
+                row_total = None
+                for _, row in df.iterrows():
+                    for i, r in enumerate(row):
+                        if pd.isna(r):
+                            row[i] = 0
+
+                    if row_total is None:
+                        row_total = row
+                        continue
+                    row_total = row_total + row
+                if country in sets:
+                    dfSub[country] = list(row_total)
+                else:
+                    dfSub.insert(0, country, list(row_total), True)
+
+            dfSub = dfSub.rename(columns={"Country/Region": "date"})
+            last_date = dfSub.index[-1]
+            count_names = []
+            for count, name in zip(list(dfSub.loc[last_date]), list(dfSub.columns)):
+                if type(count) is str:
+                    continue
+                count_names.append((count, name))
+
+            count_names.sort(key = lambda x: x[0], reverse=True)
+            return dfSub, count_names
+
+        dfSub, count_names = cleanup_global_dataframe(cls.df_global)
         dfSubDeath, _ = cleanup_global_dataframe(cls.df_global_death)
 
         fig = make_subplots(rows=5, cols=1, vertical_spacing=0.05)
@@ -156,7 +223,7 @@ class CoronaPlots(object):
         fig.update_yaxes(title_text="Daily death count", row=4, col=1)
         fig.update_yaxes(title_text="Total death ratio", row=5, col=1)
         
-        plotly.offline.plot(fig, filename = 'corona_global.html', auto_open=auto_open)
+        plotly.offline.plot(fig, filename = 'corona_global_mixed.html', auto_open=auto_open)
         return fig
 
     @classmethod
