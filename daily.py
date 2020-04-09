@@ -1,5 +1,5 @@
 import pandas as pd
-from news import *
+#from news import *
 
 news = dict()
 
@@ -223,8 +223,6 @@ class DailyData(object):
 
     @classmethod
     def news_dataframe(cls):
-
-
         date = []
         body = []
         for key, item in news.items():
